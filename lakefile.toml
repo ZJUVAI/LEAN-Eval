@@ -1,0 +1,14 @@
+name = "lean-eval"
+version = "0.1.0"
+defaultTargets = ["lean-eval"]
+
+[[lean_lib]]
+name = "LeanEval"
+
+[[lean_exe]]
+name = "lean-eval"
+root = "Main"
+
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
