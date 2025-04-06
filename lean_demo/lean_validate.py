@@ -1,7 +1,7 @@
 from lean_dojo import *
 
 def main():
-  repo = LeanGitRepo("https://github.com/maksymilan/lean-eval" , "6bd0900d470f688ec876134fdd54406b2de4a36e")
+  repo = LeanGitRepo("https://github.com/maksymilan/lean-eval" , "7001b84bf1239a35de986044c78708f745203e24")
   theorem = Theorem(repo, "test.lean", "add_comm")
 
   with Dojo(theorem) as (dojo, init_state):
