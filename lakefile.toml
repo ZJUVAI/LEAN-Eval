@@ -1,13 +1,9 @@
 name = "lean-eval"
 version = "0.1.0"
-defaultTargets = ["lean-eval"]
-
-[[lean_lib]]
-name = "LeanEval"
 
 [[lean_exe]]
-name = "lean-eval"
-root = "Main"
+name = "test"
+root = "data.Test"
 
 [[require]]
 name = "mathlib"
