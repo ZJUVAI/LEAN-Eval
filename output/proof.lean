@@ -13,30 +13,29 @@ have h₃ := h₀ 1
   have h₄ := h₀ 3
   rw [h₁] at h₃
   rw [h₂] at h₄
+  simp at h₃ h₄
   have h₅ : r ^ 2 = 3 := by
-    rw [← h₄, ← h₃]
-    field_simp
-    ring
+    have := h₄ / h₃
+    field_simp at this
+    simp [pow_succ] at this
+    exact this
   have h₆ : r = Real.sqrt 3 ∨ r = -Real.sqrt 3 := by
-    rw [← pow_two_eq_pow_two_iff_eq_or_eq_neg, h₅]
-    exact Real.sq_sqrt 3
-  have h₇ : a = 2 / r := by
-    rw [h₃]
-    field_simp
-  rw [h₇, h₀]
+    rw [← pow_two, h₅]
+    exact pow_eq_sqrt
+  have h₇ : a = 2 / Real.sqrt 3 ∨ a = -2 / Real.sqrt 3 := by
+    rcases h₆ with h | h
+    · left
+      rw [← h₃, h]
+      field_simp
+      rw [mul_comm]
+    · right
+      rw [← h₃, h]
+      field_simp
+      rw [mul_comm]
+  rw [h₀ 0]
   simp
-  rcases h₆ with h | h
-  · left
-    rw [h]
-    field_simp
-    rw [Real.sqrt_mul_self_eq_abs, abs_of_pos]
-    · field_simp
-      rw [mul_comm]
-    · linarith
-  · right
-    rw [h]
-    field_simp
-    rw [Real.sqrt_mul_self_eq_abs, abs_of_neg]
-    · field_simp
-      rw [mul_comm]
-    · linarith
+  exact h₇
+
+  <;> simp_all
+  <;> nlinarith
+  <;> linarith

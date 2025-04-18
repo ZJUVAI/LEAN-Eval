@@ -47,7 +47,7 @@ class LeanQuestionDataset(Dataset):
                 obj = json.loads(line.strip())
                 self.data.append({
                     'id': idx,
-                    'Solution': obj.get('Solution', ''),
+                    'solution': obj.get('Solution', ''),
                     'question': obj.get('Problem', ''),
                     'answer': obj.get('Answer', '')
                 })
@@ -63,12 +63,7 @@ if __name__ == '__main__':
     dataset = LeanQuestionDataset(dataset_path)
 
     dataloader = DataLoader(dataset, batch_size=4, shuffle=False)
-    batch = next(iter(dataloader))
-    # print(batch)
-    print(f"id is :\n{batch['id'][0]}")
-    print(f"question is :\n{batch['question'][0]}")
-    print(f"Solution is :\n{batch['Solution'][0]}")
-    print(f"answer is :\n{batch['answer'][0]}")
-
+    for index,batch in enumerate(dataloader):
+        print(f'Batch #{index+1}')
         
 
