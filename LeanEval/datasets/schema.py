@@ -13,8 +13,17 @@ class LeanItem(BaseModel, frozen=True, extra="allow"):
     @property
     def prompt_ready_stmt(self) -> str:
         """预拼接好 imports + statement，方便 PromptBuilder 直接用"""
+        parts = []
         if self.imports:
             imports_txt = "\n".join([f"import {i}" for i in self.imports])
-        else:
-            imports_txt = ""
-        return f"{imports_txt}\n\n{self.statement}"
+            parts.append(imports_txt)
+        if self.extra_ctx:
+            parts.append(self.extra_ctx)
+        parts.append(self.statement)
+        return "\n\n".join(parts)
+    
+    @property
+    def difficulty(self) -> int:
+        """返回这道题的难度，用于评分"""
+        return self.difficulty
+    

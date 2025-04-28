@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, Any
+from typing import Dict,List,Any
 
 from .base_api import BaseAPIModel
 from .base import ModelRegistry, Config
@@ -14,14 +14,23 @@ class DeepSeekAPIModel(BaseAPIModel):
     DEFAULT_API_URL = "https://api.deepseek.com/beta/chat/completions"
 
     # —— 构建请求体 —— #
-    def _build_payload(self, prompt: str, max_len: int) -> Dict[str, Any]:
+    def _build_payload(self, prompt: str|List[str], max_len: int) -> Dict[str, Any]:
         """构建 DeepSeek / OpenAI Chat Completion 请求体。"""
+        if isinstance(prompt,str):
+            message = [{"role":"user","content":prompt}]
+        elif isinstance(prompt,dict):
+            message = [prompt]
+        elif isinstance(prompt,list):
+            message = [p for p in prompt]
+        else:
+            raise ValueError(f"Invalid prompt type: {type(prompt)}. Must be str or List[str].")
         return {
             "model": self.cfg.model_name,
-            "messages": [{"role": "user", "content": prompt}],
-            "max_tokens": max_len,
-            "temperature": self.cfg.temperature,
-        }
+            "messages":message,
+            "max_tokens":max_len,
+            "temperature":self.cfg.temperature
+        }  
+        
 
     # —— 解析响应 —— #
     def _parse_response(self, resp: Dict[str, Any]) -> str:
