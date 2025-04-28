@@ -1,0 +1,21 @@
+id,imports,statement,extra_ctx,difficulty
+a01,"Mathlib.Data.Set.Basic;Mathlib.Data.Set.Function","theorem image_union {α β : Type*} (f : α → β) (s t : Set α) : f '' (s ∪ t) = f '' s ∪ f '' t","",2
+a02,"Mathlib.Data.Set.Basic","theorem subset_refl {α : Type*} (s : Set α) : s ⊆ s","",1
+a03,"Mathlib.Data.Set.Basic;Mathlib.Data.Set.Lattice","theorem inter_comm {α : Type*} (s t : Set α) : s ∩ t = t ∩ s","",1
+a04,"Mathlib.Data.Set.Basic","theorem subset_univ {α : Type*} (s : Set α) : s ⊆ Set.univ","",1
+a05,"Mathlib.Data.Set.Basic;Mathlib.Tactic","theorem empty_subset {α : Type*} (s : Set α) : ∅ ⊆ s","",1
+a06,"Mathlib.Data.Set.Basic","theorem union_self {α : Type*} (s : Set α) : s ∪ s = s","",1
+a07,"Mathlib.Data.Set.Basic;Mathlib.Data.Set.Intervals.Basic","theorem Icc_subset_Ico {α : Type*} [Preorder α] {a b : α} : Set.Icc a b ⊆ Set.Ico a b","",3
+a08,"Mathlib.Data.Set.Basic","theorem union_comm {α : Type*} (s t : Set α) : s ∪ t = t ∪ s","",1
+a09,"Mathlib.Data.Set.Basic;Mathlib.Topology.Basic","theorem empty_interior {α : Type*} [TopologicalSpace α] : interior (∅ : Set α) = ∅","",3
+a10,"Mathlib.Data.Set.Basic","theorem compl_univ {α : Type*} : Set.compl (Set.univ : Set α) = ∅","",2
+a11,"Mathlib.Data.Set.Basic;Mathlib.Data.Set.Function","theorem preimage_union {α β : Type*} (f : α → β) (s t : Set β) : f ⁻¹' (s ∪ t) = f ⁻¹' s ∪ f ⁻¹' t","",2
+a12,"Mathlib.Data.Set.Basic","theorem inter_empty_right {α : Type*} (s : Set α) : s ∩ ∅ = ∅","",1
+a13,"Mathlib.Data.Set.Basic","theorem subset_union_left {α : Type*} (s t : Set α) : s ⊆ s ∪ t","",1
+a14,"Mathlib.Data.Set.Basic;Mathlib.Order.Supremum","theorem Sup_empty {α : Type*} [CompleteLattice α] : sup ∅ = ⊥","",3
+a15,"Mathlib.Data.Set.Basic","theorem inter_self {α : Type*} (s : Set α) : s ∩ s = s","",1
+a16,"Mathlib.Data.Set.Basic;Mathlib.Data.Set.Image","theorem image_id {α : Type*} (s : Set α) : id '' s = s","",2
+a17,"Mathlib.Data.Set.Basic","theorem subset_union_right {α : Type*} (s t : Set α) : t ⊆ s ∪ t","",1
+a18,"Mathlib.Data.Set.Basic;Mathlib.Data.Set.Pointwise","theorem singleton_mul {α : Type*} [Monoid α] (a b : α) : ({a} * {b} : Set α) = {a * b}","",3
+a19,"Mathlib.Data.Set.Basic","theorem diff_subset {α : Type*} (s t : Set α) : s \\ t ⊆ s","",1
+a20,"Mathlib.Data.Set.Basic;Mathlib.Data.Set.Lattice","theorem inter_assoc {α : Type*} (r s t : Set α) : r ∩ s ∩ t = r ∩ (s ∩ t)","",2
