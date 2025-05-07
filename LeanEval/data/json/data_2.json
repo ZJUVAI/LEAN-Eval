@@ -1,0 +1,9 @@
+[
+    {
+        "id": "3d0b29e2-6197-422e-8a1b-97ab7b9d5c83",
+        "imports": ["Mathlib.Data.Set.Basic"],
+        "statement": "theorem subset_refl {α : Type*} (s : Set α) : s ⊆ s",
+        "extra_ctx": "",
+        "difficulty": 1
+    }
+]

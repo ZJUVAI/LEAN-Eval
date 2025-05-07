@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import Dict, Any
+from typing import Dict,List,Any
 
 from .base_api import BaseAPIModel
 from .base import ModelRegistry, Config
@@ -14,22 +14,35 @@ class DeepSeekAPIModel(BaseAPIModel):
     DEFAULT_API_URL = "https://api.deepseek.com/beta/chat/completions"
 
     # —— 构建请求体 —— #
-    def _build_payload(self, prompt: str, max_len: int) -> Dict[str, Any]:
+    def _build_payload(self, prompt: str|List[str], max_len: int) -> Dict[str, Any]:
         """构建 DeepSeek / OpenAI Chat Completion 请求体。"""
+        if isinstance(prompt,str):
+            message = [{"role":"user","content":prompt}]
+        elif isinstance(prompt,dict):
+            message = [prompt]
+        elif isinstance(prompt,list):
+            if not all(isinstance(p, dict) for p in prompt):
+                raise ValueError("如果 prompt 是列表，它必须是消息字典的列表。")
+            message = prompt
+        else:
+            raise ValueError(f"Invalid prompt type: {type(prompt)}. Must be str,dict or List[str].")
         return {
             "model": self.cfg.model_name,
-            "messages": [{"role": "user", "content": prompt}],
-            "max_tokens": max_len,
-            "temperature": self.cfg.temperature,
-        }
+            "messages":message,
+            "max_tokens":max_len,
+            "temperature":self.cfg.temperature
+        }  
+        
 
     # —— 解析响应 —— #
     def _parse_response(self, resp: Dict[str, Any]) -> str:
         """解析 Chat Completion 响应，提取 assistant 回复。"""
         try:
             return resp["choices"][0]["message"]["content"]
-        except (KeyError, IndexError):
-            return resp.get("error", "Unknown response format")
+        except (KeyError, IndexError, TypeError) as e:
+            error_message = resp.get("error", {}).get("message", "未知的响应格式")
+            print(f"解析 Gemini 响应时出错: {e}, API 错误: {error_message}")
+            return f"API 返回错误: {error_message}"
 
     # —— 覆写 load —— #
     def load(self) -> None:
