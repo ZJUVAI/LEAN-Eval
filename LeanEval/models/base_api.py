@@ -9,6 +9,7 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from tqdm import tqdm
 
 import requests
+from requests.adapters import HTTPAdapter
 from tenacity import (
     retry,
     wait_exponential,
@@ -32,6 +33,9 @@ class BaseAPIModel(BaseModel):
     # —— 重试策略 —— #
     RETRY_WAIT = wait_exponential(multiplier=1, min=1, max=20)  # 指数退避
     RETRY_STOP = stop_after_attempt(5)  # 最多重试 5 次，可在子类覆盖
+    def __init__(self, cfg: Config):
+        self._session: Optional[requests.Session] = None
+        super().__init__(cfg) # BaseModel的__init__会调用self.load()
 
     # —— 带重试的 POST —— #
     @retry(
@@ -49,6 +53,10 @@ class BaseAPIModel(BaseModel):
         返回:
             Dict[str, Any]: 解析后的 JSON 响应体。
         """
+        if not self._session:
+            logger.error("Session not initialized. Call load() or ensure __init__ properly initializes session.")
+            raise RuntimeError("Session is not initialized.")
+
         headers = {
             "Authorization": f"Bearer {self.cfg.api_key}",
             "Content-Type": "application/json",
@@ -71,10 +79,10 @@ class BaseAPIModel(BaseModel):
         """解析 API 响应，子类可按需覆写。"""
         return resp.get("text", "")
 
-    # —— BaseModel 接口实现 —— #
-    def load(self) -> None:
-        """API 型模型通常无需重量级加载，直接标记为已加载。"""
-        self._loaded = True
+    # # —— BaseModel 接口实现 —— #
+    # def load(self) -> None:
+    #     """API 型模型通常无需重量级加载，直接标记为已加载。"""
+    #     self._loaded = True
 
     def predict(
             self, 

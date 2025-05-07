@@ -77,29 +77,6 @@ class ProofValidator:
         success, msg = self.validate_file(tmp_file)
         # 可按需删除/tmp_file 或保留看日志
         return success, msg
-    
-    def validate_code(
-    self, code: str, tmp_dir: str | Path = "./tmp_proofs", stem: str = "proof"
-) -> Tuple[bool, str]:
-        """
-        将 code 写入临时文件 <tmp_dir>/<stem>.lean，调用 validate_file 验证后自动删除临时文件。
-        """
-        tmp_dir = Path(tmp_dir)
-        tmp_dir.mkdir(parents=True, exist_ok=True)
-        tmp_file = tmp_dir / f"{stem}.lean"
-
-        try:
-            tmp_file.write_text(code, encoding="utf-8")
-            success, msg = self.validate_file(tmp_file)
-        finally:
-            # 无论成功失败，最后都尝试删除临时文件
-            if tmp_file.exists():
-                try:
-                    tmp_file.unlink()
-                except Exception as e:
-                    print(f"Warning: Failed to delete temp file {tmp_file}: {e}")
-
-        return success, msg
 
 
     # ------------------------------------------------------------------ #

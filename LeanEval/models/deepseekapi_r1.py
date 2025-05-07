@@ -37,8 +37,10 @@ class DeepSeekAPIModel(BaseAPIModel):
         """解析 Chat Completion 响应，提取 assistant 回复。"""
         try:
             return resp["choices"][0]["message"]["content"]
-        except (KeyError, IndexError):
-            return resp.get("error", "Unknown response format")
+        except (KeyError, IndexError, TypeError) as e:
+            error_message = resp.get("error", {}).get("message", "未知的响应格式")
+            print(f"解析 Gemini 响应时出错: {e}, API 错误: {error_message}")
+            return f"API 返回错误: {error_message}"
 
     # —— 覆写 load —— #
     def load(self) -> None:
