@@ -1,9 +1,6 @@
--- 导入 Mathlib 库
-import Mathlib.Data.Nat.Bits
-import Mathlib.Data.Nat.Basic
+import Mathlib.Algebra.Group.Defs
 
--- 定义定理：自然数加法的交换律
-theorem add_comm (a b : ℕ) : a + b = b + a := by
+theorem add_comm1 (a b : ℕ) : a + b = b + a := by
   -- 使用归纳法证明
   induction a with
   | zero =>
