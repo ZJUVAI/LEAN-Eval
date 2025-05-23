@@ -1,0 +1,12 @@
+name = "lean-eval"
+version = "0.1.0"
+
+[[lean_lib]]
+name = "LeanEval"
+src_dir = "examples"
+root = "test"
+libs = ["mathlib"]
+
+[[require]]
+name = "mathlib"
+scope = "leanprover-community"
