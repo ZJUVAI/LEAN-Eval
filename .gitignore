@@ -1,1 +1,4 @@
 /.lake
+*.pyc
+*tmp*
+/.lake.7z

@@ -6,6 +6,7 @@ import logging
 from pathlib import Path
 from typing import Dict, Optional, Union, Sequence, List, Any
 from concurrent.futures import ThreadPoolExecutor, as_completed
+from utils.extract import extract_lean_code_after_marker
 from tqdm import tqdm
 
 import requests
@@ -131,7 +132,7 @@ class BaseAPIModel(BaseModel):
             result = self._parse_response(resp)
             if save_path:
                 save_path.parent.mkdir(parents=True,exist_ok=True)
-                save_path.write_text(result,encoding="utf-8")
+                save_path.write_text(extract_lean_code_after_marker(result),encoding="utf-8")
             return result
         except RetryError as e:
             raise RuntimeError(

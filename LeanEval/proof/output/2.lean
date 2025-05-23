@@ -1,4 +1,3 @@
-```lean
 import Mathlib.Data.Set.Basic
 
 theorem union_comm {α : Type*} (s t : Set α) : s ∪ t = t ∪ s := by
@@ -7,10 +6,9 @@ theorem union_comm {α : Type*} (s t : Set α) : s ∪ t = t ∪ s := by
   constructor
   · intro h
     cases h with
-    | inl h => exact Or.inr h
-    | inr h => exact Or.inl h
+    | inl hs => exact Or.inr hs
+    | inr ht => exact Or.inl ht
   · intro h
     cases h with
-    | inl h => exact Or.inr h
-    | inr h => exact Or.inl h
-```
+    | inl ht => exact Or.inr ht
+    | inr hs => exact Or.inl hs

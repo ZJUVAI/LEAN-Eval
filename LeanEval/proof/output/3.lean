@@ -1,4 +1,3 @@
-```lean
 import Mathlib.Data.Set.Basic
 
 theorem inter_comm {α : Type*} (s t : Set α) : s ∩ t = t ∩ s := by
@@ -9,4 +8,3 @@ theorem inter_comm {α : Type*} (s t : Set α) : s ∩ t = t ∩ s := by
     exact ⟨hxt, hxs⟩
   · intro ⟨hxt, hxs⟩
     exact ⟨hxs, hxt⟩
-```

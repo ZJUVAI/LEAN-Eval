@@ -11,8 +11,13 @@ def extract_lean_code_after_marker(text: str) -> str:
         str: 去除 ```lean 前缀的代码部分
     """
     marker = "```lean"
+    end_marker = "```"
     if marker in text:
-        return text.split(marker, 1)[1].strip()
+        # 分割开始标记后的内容
+        parts = text.split(marker, 1)
+        # 再分割结束标记
+        code_part = parts[1].split(end_marker, 1)[0]
+        return code_part.strip()
     return text.strip()
 
 if __name__ == "__main__":

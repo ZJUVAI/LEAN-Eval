@@ -33,23 +33,23 @@ with ModelRegistry.create(
     timeout=60,               # 可以自定义传入Config内未定义的字段
     temperature=0.8,
 ) as model:
+    start = time()
     for idx,item in enumerate(ds):
-        start = time()
         prompt_str = prompt_builder_str.build_chat(item)
         # print(prompt_str)
         prompts.append(prompt_str)
         # print("model block starts ...")
-        model.predict(
-            prompts,
-            num_workers=20,
-            save_dir=proof_dir
-        )
-        end = time()
-        print(f"run {len(prompts)} questions using {end - start}s")
+    model.predict(
+        prompts,
+        num_workers=20,
+        save_dir=proof_dir
+    )
+    end = time()
+    print(f"run {len(prompts)} questions using {end - start}s")
         
 
-validator = ProofValidator(work_dir=proof_dir)
-results = validator.validate_dir()
+validator = ProofValidator()
+results = validator.validate_dir("LeanEval/proof/output")
 print(results)
 end = time()
 print(end - start)
