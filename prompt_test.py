@@ -16,10 +16,10 @@ prompt_str  = pb.build_str(item)   # 纯字符串
 chat_prompt = pb.build_chat(item)  # [{"role":"user", ...}]
 # print(chat_prompt)
 # # 2. few-shot
-# shots = [
-#     ("```lean\nlemma two_mul (n : Nat) : 2 * n = n + n := by\n  -- proof?\n```",
-#      "```lean\nlemma two_mul (n : Nat) : 2 * n = n + n := by\n  simp [two_mul]\n```")
-# ]
+shots = [
+    ("```lean\nlemma two_mul (n : Nat) : 2 * n = n + n := by\n  -- proof?\n```",
+     "```lean\nlemma two_mul (n : Nat) : 2 * n = n + n := by\n  simp [two_mul]\n```")
+]
 # pb_fs = get_builder("fewshot", shots=shots)
 # messages = pb_fs.build_chat(item)
 # for _ in messages:
@@ -34,8 +34,8 @@ with ModelRegistry.create(
     temperature=0.8,
 ) as model:
     for item in ds:
-        prompt_str = pb.build_chat(item)
+        prompt_str = pb.build_str(item)
         print(prompt_str)
         # print(len(prompt_str))
         # print(type(prompt_str))
-        print(model.predict(prompt_str))
+        # print(model.predict(prompt_str))

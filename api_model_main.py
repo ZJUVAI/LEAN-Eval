@@ -8,6 +8,15 @@ from LeanEval.models import DeepSeekAPIModel
 from LeanEval.models import GeminiAPIModel
 from LeanEval.validator.proof_validator import ProofValidator
 from time import time
+import logging
+# logging.basicConfig(
+#     level=logging.DEBUG,
+#     format='%(asctime)s - %(name)s - %(levelname)s - Thread %(thread)d (%(threadName)s) - %(message)s',
+#     # stream=sys.stdout # 可选，默认是 sys.stderr，如果想输出到 stdout 可以指定
+# )
+# logging.getLogger("urllib3").setLevel(logging.INFO) # 或 logging.WARNING
+# logging.getLogger("requests").setLevel(logging.INFO)
+
 
 json_path = "./data/json/data_1.json"
 jsonl_path = "./data/jsonl/data_1.jsonl"

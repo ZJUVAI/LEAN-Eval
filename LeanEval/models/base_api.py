@@ -27,9 +27,7 @@ logger = logging.getLogger(__name__)
 
 class BaseAPIModel(BaseModel):
     """REST / HTTP API 形式大模型的通用父类。"""
-    
-    _lock = threading.Lock()  # 线程安全锁（防止多线程同时写 socket）
-    
+        
     # —— 重试策略 —— #
     RETRY_WAIT = wait_exponential(multiplier=1, min=1, max=20)  # 指数退避
     RETRY_STOP = stop_after_attempt(5)  # 最多重试 5 次，可在子类覆盖
@@ -37,6 +35,29 @@ class BaseAPIModel(BaseModel):
         self._session: Optional[requests.Session] = None
         super().__init__(cfg) # BaseModel的__init__会调用self.load()
 
+    def load(self) -> None:
+        """API型模型通常无需重量级加载。初始化Session。"""
+        self._loaded = True
+        if not self._session: # 防止重复加载时重复创建
+            self._session = requests.Session()
+            # 根据预期的并发工作线程数（num_workers）来配置连接池大小
+            adapter_pool_connections = getattr(self.cfg, 'adapter_pool_connections', 10) # 允许100个并发连接
+            adapter_pool_maxsize = getattr(self.cfg, 'adapter_pool_maxsize', 10) # 池中保持的最大连接数
+
+            adapter = HTTPAdapter(pool_connections=adapter_pool_connections, pool_maxsize=adapter_pool_maxsize)
+            self._session.mount("http://", adapter)
+            self._session.mount("https://", adapter)
+        print(f"Session and adapter initialized for {self.cfg.model_name}") # 调试信息
+
+    def release(self) -> None:
+        """释放模型资源，关闭Session。"""
+        if self._session:
+            self._session.close()
+            self._session = None
+            # print(f"Session closed for {self.cfg.model_name}") # 调试信息
+        # 如果BaseModel有自己的release逻辑，确保调用
+        if hasattr(super(), 'release'):
+            super().release()
     # —— 带重试的 POST —— #
     @retry(
         wait=RETRY_WAIT,
@@ -61,12 +82,14 @@ class BaseAPIModel(BaseModel):
             "Authorization": f"Bearer {self.cfg.api_key}",
             "Content-Type": "application/json",
         }
-        resp = requests.post(
+        logger.debug(f"Thread {threading.get_ident()}: Making POST request to {self.cfg.api_url} with payload: {json.dumps(payload)[:200]}...") # 截断payload日志
+        resp = self._session.post( # 使用 self._session.post
             self.cfg.api_url,
             headers=headers,
             data=json.dumps(payload),
             timeout=self.cfg.timeout,
         )
+        logger.debug(f"Thread {threading.get_ident()}: Received response status {resp.status_code}")
         resp.raise_for_status()
         return resp.json()
 
@@ -132,7 +155,7 @@ class BaseAPIModel(BaseModel):
                 pass
         return results
     
-    def _predict_one(self, prompt: str , max_len: int = 2048, save_path: Optional[Path] = None) -> str:
+    def _predict_one(self, prompt: str|dict , max_len: int = 2048, save_path: Optional[Path] = None) -> str:
         try:
             payload = self._build_payload(prompt,max_len)
             resp = self._post(payload)

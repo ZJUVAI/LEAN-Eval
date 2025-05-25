@@ -19,6 +19,8 @@ class PromptBuilder(ABC):
     def build_chat(self, item: LeanItem) -> List[dict]:
         # 默认：把 build_str() 塞进 1 条 user 消息
         return [{"role": "user", "content": self.build_str(item)}]
+    
+    def build_chat_for_tactic(self, leanCode: str, tips: List[str]) -> str: ...
 
 
 # ============================================================
@@ -84,6 +86,27 @@ class FewShotPromptBuilder(PromptBuilder):
         # 当前题目
         user_msg = self.user_prefix + _make_lean_block(
             f"{item.prompt_ready_stmt} := by\n  -- your proof here"
+        )
+        messages.append({"role": "user", "content": user_msg})
+        return messages
+    
+    def build_chat_for_tactic(self, leanCode: str, tips: List[str]) -> str:
+        system_msg: str = "你是 Lean4 的专家，请根据已有的定理证明过程和有关目标的提示，补充一行证明，使其更接近证明完成，只返回完整 Lean 代码，风格见示例。"
+        messages: List[dict] = [{"role": "system", "content": system_msg}]
+        # few-shot 示例
+        for u, a in self.shots:
+            messages.append({"role": "user", "content": u})
+            messages.append({"role": "assistant", "content": a})
+
+        # 当前题目
+        for idx, tip in enumerate(tips):
+            user_prefix = f"下面给出第{idx + 1}个提示:\n\n"
+            user_msg = user_prefix + tip
+            messages.append({"role": "user", "content": user_msg})
+
+        user_prefix = "请对以下Lean定理证明补充一行:\n\n"
+        user_msg = user_prefix + _make_lean_block(
+            f"{leanCode}\n  -- the next line of the proof here"
         )
         messages.append({"role": "user", "content": user_msg})
         return messages

@@ -1,7 +1,9 @@
 import subprocess
 from pathlib import Path
 from typing import Tuple, List, Optional
+import os
 from concurrent.futures import ThreadPoolExecutor
+from LeanEval.utils.extract_lean_code import extract_lean_block
 
 class ProofValidator:
     """
@@ -26,7 +28,8 @@ class ProofValidator:
     ):
         self.lean_cmd: List[str] = lean_cmd or ["lake", "env", "lean"]
         self.timeout = timeout
-        self.work_dir = Path(work_dir) if work_dir else None
+        self.root_dir = Path(__file__).resolve().parent.parent.parent
+        self.work_dir = Path(work_dir) if work_dir else Path(__file__).resolve().parent.parent.parent
 
     # ------------------------------------------------------------------ #
     # 核心 API：验证单个 Lean 文件
@@ -49,7 +52,7 @@ class ProofValidator:
                 capture_output=True,
                 text=True,
                 timeout=self.timeout,
-                cwd=self.work_dir,
+                cwd=self.root_dir ,
             )
         except subprocess.TimeoutExpired:
             return False, "Lean 验证超时"
@@ -64,18 +67,27 @@ class ProofValidator:
     # （可选）直接验证字符串：先写临时文件再验证
     # ------------------------------------------------------------------ #
     def validate_code(
-        self, code: str, tmp_dir: str | Path = "./tmp_proofs", stem: str = "proof"
-    ) -> Tuple[bool, str]:
+    self, code: str, tmp_dir: str | Path = "./tmp_proofs", stem: str = "proof", clean_up: bool = True
+) -> Tuple[bool, str]:
         """
-        将 code 写入临时文件 <tmp_dir>/<stem>.lean 再调用 validate_file。
+        将 code 写入临时文件 <tmp_dir>/<stem>.lean，调用 validate_file 验证后自动删除临时文件。
         """
         tmp_dir = Path(tmp_dir)
         tmp_dir.mkdir(parents=True, exist_ok=True)
         tmp_file = tmp_dir / f"{stem}.lean"
-        tmp_file.write_text(code, encoding="utf-8")
 
-        success, msg = self.validate_file(tmp_file)
-        # 可按需删除/tmp_file 或保留看日志
+        try:
+            code = extract_lean_block(code)
+            tmp_file.write_text(code, encoding="utf-8")
+            success, msg = self.validate_file(tmp_file)
+        finally:
+            # 无论成功失败，最后都尝试删除临时文件
+            if tmp_file.exists() and clean_up:
+                try:
+                    tmp_file.unlink()
+                except Exception as e:
+                    print(f"Warning: Failed to delete temp file {tmp_file}: {e}")
+
         return success, msg
 
 
@@ -83,28 +95,44 @@ class ProofValidator:
     # （可选）批量验证：返回通过 / 失败列表
     # ------------------------------------------------------------------ #
     def validate_batch(
-        self, files: List[str | Path]
+        self, files: List[str | Path], num_workers: int = os.cpu_count() + 4
     ) -> Tuple[List[str], List[str]]:
         """
         批量验证 Lean 文件；返回 (passed_list, failed_list)。
         """
         passed, failed = [], []
-        for f in files:
-            ok, _ = self.validate_file(f)
-            (passed if ok else failed).append(str(f))
+        lean_files: List[Path] = [Path(f) for f in files]
+
+        def validate_single(filepath: Path) -> bool:
+            success, _ = self.validate_file(filepath)
+            return success
+        
+        with ThreadPoolExecutor(max_workers=num_workers) as executor:
+                results = list(executor.map(validate_single,lean_files))
+        
+        for f, result in zip(files, results):
+            (passed if result else failed).append(str(f))
         return passed, failed
 
     def validate_dir(
-        self,num_workers: int = 1  
+        self, base_dir: Path | str, num_workers: int = os.cpu_count() + 4
     ) -> List[Tuple[Path,bool,str]]:
         """
-        对自身路径文件夹下的所有后缀为 .lean 的文件进行验证
+        对某条路径文件夹下的所有后缀为 .lean 的文件进行验证
+
+        Args:
+        -------
+        base_dir: 待验证的文件夹路径,指相对root_dir的路径
+
+        Returns:
+        --------
+        List[Tuple[Path,bool,str]]: (文件路径,验证结果,运行信息)
         """
-        base_dir = Path(self.work_dir)
+        base_dir = self.root_dir / Path(base_dir)
         lean_files = list(base_dir.rglob("*.lean"))
 
         def validate_single(filepath: Path) -> Tuple[Path,bool,str]:
-            success,running_message = self.validate_file(filepath)
+            success, running_message = self.validate_file(filepath)
             return (filepath,success,running_message)
         
         results: List[Tuple[Path,bool,str]] = []
