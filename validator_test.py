@@ -1,4 +1,4 @@
-from validator.proof_validator import ProofValidator
+from LeanEval.validator.proof_validator import ProofValidator
 
 validator = ProofValidator(timeout=60)        # 可自定义 lean_cmd、work_dir
 # 单文件验证功能检查（√）
