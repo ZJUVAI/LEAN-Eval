@@ -1,15 +1,20 @@
-from prompt import get_builder
+from LeanEval.prompt import get_builder
 import os
-from datasets import LeanItem
-from datasets import JsonDataset
-from datasets import JsonlDataset
-from models import ModelRegistry
-from models import DeepSeekAPIModel
-from validator.proof_validator import ProofValidator
+from LeanEval.datasets import LeanItem
+from LeanEval.datasets import JsonDataset
+from LeanEval.datasets import JsonlDataset
+from LeanEval.models import ModelRegistry
+from LeanEval.models import DeepSeekAPIModel
+from LeanEval.models import GeminiAPIModel
+from LeanEval.validator.proof_validator import ProofValidator
 from time import time
 
 json_path = "./data/json/data_1.json"
 jsonl_path = "./data/jsonl/data_1.jsonl"
+API_URL = "https://api-zjuvai.newnan.city/v1/chat/completions"
+BOT_NAME = "gemini_api"
+MODEL_NAME = "gemini-2.0-flash-exp"
+API_KEY = "sk-Knq6X2wZut1jYaOXBc1120C2474141E2885a14F3A0D11fF8"
 ds = JsonDataset(json_path)
 
 
@@ -26,10 +31,10 @@ if not os.path.exists(proof_dir):
     os.makedirs(proof_dir)
 
 with ModelRegistry.create(
-    "deepseek_api",
-    model_name="deepseek-chat",
-    api_url="https://api.deepseek.com/beta/chat/completions",
-    api_key="sk-c5172f87dfe4418899fefd6cb6ee7309",
+    BOT_NAME,
+    model_name=MODEL_NAME,
+    api_url=API_URL,
+    api_key=API_KEY,
     timeout=60,               # 可以自定义传入Config内未定义的字段
     temperature=0.8,
 ) as model:
@@ -39,13 +44,13 @@ with ModelRegistry.create(
         # print(prompt_str)
         prompts.append(prompt_str)
         # print("model block starts ...")
-        model.predict(
-            prompts,
-            num_workers=20,
-            save_dir=proof_dir
-        )
-        end = time()
-        print(f"run {len(prompts)} questions using {end - start}s")
+    model.predict(
+        prompts,
+        num_workers=4,
+        save_dir=proof_dir
+    )
+    end = time()
+    print(f"run {len(prompts)} questions using {end - start}s")
         
 
 validator = ProofValidator(work_dir=proof_dir)

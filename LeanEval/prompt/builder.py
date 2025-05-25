@@ -2,7 +2,7 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 from typing import List, Sequence
 
-from datasets import LeanItem   
+from LeanEval.datasets import LeanItem   
 
 # ============================================================
 # 抽象基类

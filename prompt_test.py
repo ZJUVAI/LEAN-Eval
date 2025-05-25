@@ -1,8 +1,8 @@
-from prompt import get_builder
-from datasets import LeanItem
-from datasets import JsonDataset
-from models import ModelRegistry
-from models import DeepSeekAPIModel
+from LeanEval.prompt import get_builder
+from LeanEval.datasets import LeanItem
+from LeanEval.datasets import JsonDataset
+from LeanEval.models import ModelRegistry
+from LeanEval.models import DeepSeekAPIModel
 json_path = "./data/json/data_1.json"
 
 ds = JsonDataset(json_path)

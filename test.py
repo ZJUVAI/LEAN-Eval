@@ -1,5 +1,5 @@
-from models import ModelRegistry
-from models import DeepSeekAPIModel
+from LeanEval.models import ModelRegistry
+from LeanEval.models import DeepSeekAPIModel
 with ModelRegistry.create(
         "deepseek_api",
         model_name="deepseek-chat",

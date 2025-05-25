@@ -1,7 +1,7 @@
-from datasets.json_dataset import JsonlDataset
-from datasets.json_dataset import JsonDataset
-from datasets.csv_dataset import CsvDataset
-from datasets.yaml_dataset import YamlDataset
+from LeanEval.datasets.json_dataset import JsonlDataset
+from LeanEval.datasets.json_dataset import JsonDataset
+from LeanEval.datasets.csv_dataset import CsvDataset
+from LeanEval.datasets.yaml_dataset import YamlDataset
 import os
 json_path =  "./data/json/data_1.json"
 csv_path = "./data/csv/data_1.csv"
