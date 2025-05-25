@@ -1,1 +1,8 @@
 /.lake
+/data
+/examples
+/LeanProblems
+/proof
+/output*
+.lake.zip
+/tmp*
