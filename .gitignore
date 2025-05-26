@@ -1,5 +1,5 @@
 /.lake
-# /data
+/data
 /examples
 /LeanProblems
 /proof

@@ -21,9 +21,11 @@ class DeepSeekAPIModel(BaseAPIModel):
         elif isinstance(prompt,dict):
             message = [prompt]
         elif isinstance(prompt,list):
-            message = [p for p in prompt]
+            if not all(isinstance(p, dict) for p in prompt):
+                raise ValueError("如果 prompt 是列表，它必须是消息字典的列表。")
+            message = prompt
         else:
-            raise ValueError(f"Invalid prompt type: {type(prompt)}. Must be str or List[str].")
+            raise ValueError(f"Invalid prompt type: {type(prompt)}. Must be str,dict or List[str].")
         return {
             "model": self.cfg.model_name,
             "messages":message,
