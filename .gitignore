@@ -2,7 +2,11 @@
 /data
 /examples
 /LeanProblems
+/__pycache__
 /proof
 /output*
 .lake.zip
 /tmp*
+*.pyc
+*.lean
+/src

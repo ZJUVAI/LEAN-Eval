@@ -1,3 +1,4 @@
+# LeanEval/datasets/downloader.py
 # 标准库：命令行参数分析,系统操作,网络链接分析等
 import argparse
 import os
@@ -241,8 +242,8 @@ def main():
     parser.add_argument(
         "-o", "--output-dir",
         type=str,
-        default=".",
-        help="Base directory to download datasets to (default: current directory)."
+        default="./data/downloaded", # <--- Changed default to a subfolder
+        help="Base directory to download datasets to (default: ./data/downloaded)."
     )
     # New argument for downloading from a file
     parser.add_argument(
@@ -275,12 +276,12 @@ def main():
     if args.url:
         process_single_url(args.url, args.output_dir)
         action_taken = True
-    
+
     # 此处逻辑是用于判断用户使用哪种下载
     if args.from_file: # This will be true if --from-file is present (with or without a value)
         download_from_file(args.from_file, args.output_dir)
         action_taken = True
-    
+
     if args.select:
         select_and_download_predefined(args.output_dir)
         action_taken = True
