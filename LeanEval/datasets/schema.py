@@ -9,7 +9,14 @@ class LeanItem(BaseModel, frozen=True, extra="allow"):
     statement: str
     extra_ctx: str | None = ""
     difficulty: int = 1
+    
+    @property
+    def imports_txt(self) -> str:
+        if self.imports:
+            return "\n".join([f"import {i}" for i in self.imports])
 
+        else:
+            return None
     @property
     def prompt_ready_stmt(self) -> str:
         """预拼接好 imports + statement，方便 PromptBuilder 直接用"""
