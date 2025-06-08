@@ -2,17 +2,33 @@
 from LeanEval.runner.local_runner import LocalHuggingFaceRunner
 from pathlib import Path
 from LeanEval.utils import process_dataset
+from LeanEval.datasets import downloader
 import accelerate
+import os
+import json
 
 def main():
-    dataset_root_directory = Path("./data/test").resolve()
-    output_file = Path("./data/json/minilean.json").resolve()
-    process_dataset.process_dataset(dataset_root_directory, output_file)
+    # github_downloader = downloader.GitHubDownloader(
+    # url="https://github.com/deepseek-ai/DeepSeek-Prover-V1.5.git",
+    # output_dir="./data/downloaded"
+    # )
+
+    # github_downloader.download()
+    # print('github download success')
+
+    # download_path = "./data/downloaded/DeepSeek-Prover-V1.5/datasets/minif2f.jsonl"
+    output_json_path = "./data/json/minif2f.json"
+    # process_dataset.process_jsonl_dataset(download_path=download_path,ouput_json_path=output_json_path)
+    # with open(output_json_path,"r",encoding="utf-8") as f:
+    #     data = json.load(f)
+    #     with open("./data/json/minilean.json","w",encoding="utf-8") as wf:
+    #         json.dump(data[:4],wf,indent=2,ensure_ascii=False)
+
     runner = LocalHuggingFaceRunner(
-        model_id="deepseek-ai/DeepSeek-Prover-V2-7B",
-        dataset_path="./data/json/minilean.json", # 使用您处理好的数据集
+        model_id="gpt2",
+        dataset_path="./data/json/minilean.json", 
         output_dir_base="./outputs_runner_test",
-        per_device_batch_size=1, # 根据您的 GPU 显存调整
+        per_device_batch_size=1, 
         max_new_tokens=512,
         mixed_precision='bf16', # 或 fp16
         num_proof_rounds=2

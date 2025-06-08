@@ -171,11 +171,10 @@ def process_dataset(download_path: str, output_json_path: str):
     print(f"提取到 {len(all_items)} 个潜在的定理/引理。")
 
     lean_items_data = []
-    # ... (后续的 Pydantic 验证和 JSON 保存逻辑保持不变) ...
     for item_data in all_items:
         try:
             if item_data.get("statement"):
-                LeanItem(**item_data) # 使用 Pydantic 进行验证
+                LeanItem(**item_data) 
                 lean_items_data.append(item_data)
         except Exception as e:
             print(f"因验证错误跳过项目 {item_data.get('id')} (来自文件 {item_data.get('source_file', 'N/A')}): {e}")
@@ -186,6 +185,40 @@ def process_dataset(download_path: str, output_json_path: str):
         json.dump(lean_items_data, f, indent=2, ensure_ascii=False)
     print("处理完成。")
 
-# ... (main 函数和 argparse 保持不变，但调用 process_dataset 时 download_path 会被用作 dataset_root)
-# 在 main 函数中调用 process_dataset 时，download_dir (或 local_dataset_path) 就是 dataset_root_path
-# 例如: process_dataset(str(local_dataset_path), str(output_json))
+def extract_imports(imports_string: str) -> List[str]:
+    imports = imports_string.split('\n')
+    output = []
+    for line in imports:
+        line = line.strip()
+        if line:
+            output.append(line)
+    return output
+
+def process_jsonl_dataset(download_path: str,ouput_json_path: str):
+    """将已有的 JSONl 文件处理成 JSON 数据集"""
+    dataset_root = Path(download_path).resolve()
+
+    theorems = []
+    try:
+        with open(dataset_root) as f:
+            for line in f:
+                item = json.loads(line)
+                header = [] if "header" not in item else extract_imports(item["header"])
+                theorems.append({
+                    "id":item["name"],
+                    "imports": header,
+                    "statement":item["formal_statement"],
+                    "source_file":str(download_path),
+                    "difficulty":1
+                })
+
+    except Exception as e:
+        print(f"jsonl dataset loading error: {e}")
+        return
+    
+    print(f"提取到 {len(theorems)} 个定理")
+    print(f"正在保存 {len(theorems)} 个定理到 {ouput_json_path}...")
+    Path(ouput_json_path).parent.mkdir(parents=True,exist_ok=True)
+    with open(ouput_json_path,'w',encoding='utf-8') as f:
+        json.dump(theorems,f,indent=2,ensure_ascii=False)
+    print("处理完成")

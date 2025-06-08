@@ -268,7 +268,7 @@ class LocalHuggingFaceRunner:
                         imports_list = output_data["imports"]
                         model_gen_code = output_data["generated_proof_part"]
 
-                        imports_block = "\n".join([f"import {i}" for i in imports_list]) if imports_list else ""
+                        imports_block = "\n".join([f"{i}" for i in imports_list]) if imports_list else ""
                         cleaned_model_output = extract_lean_block(model_gen_code) or model_gen_code
                         
                         full_code = f"{imports_block}\n\n{cleaned_model_output}" if imports_block else cleaned_model_output
