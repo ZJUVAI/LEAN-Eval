@@ -116,11 +116,6 @@ class FewShotPromptBuilder(PromptBuilder):
             "FewShotPromptBuilder 主要用于 chat 消息；请调用 build_chat()"
         )
 
-
-# ============================================================
-#  Builder Registry —— 方便配置化选择
-# ============================================================
-
 BUILDER_REGISTRY: dict[str, type[PromptBuilder]] = {
     "simple": SimplePromptBuilder,
     "fewshot": FewShotPromptBuilder,

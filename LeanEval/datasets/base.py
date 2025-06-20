@@ -21,7 +21,7 @@ class BaseDataset(ABC, Sequence[LeanItem]):
 
     def __init__(self, path: str | Path):
         self.path = Path(path)
-        self._data: List[LeanItem] | None = None      # 惰性加载缓存
+        self._data: List[LeanItem] | None = None
 
     # ------- 子类必须实现两个私有方法 ------- #
     @abstractmethod
@@ -29,7 +29,7 @@ class BaseDataset(ABC, Sequence[LeanItem]):
     @abstractmethod
     def _read_raw(self) -> Iterable: ...
 
-    # ------- 公共 API ------- #
+    # ------- Sequence的协议 ------- #
     def __len__(self) -> int:
         if self._data is None:
             self._data = self._load()

@@ -9,10 +9,17 @@ class LeanItem(BaseModel, frozen=True, extra="allow"):
     statement: str
     extra_ctx: str | None = ""
     difficulty: int = 1
-
+    
+    # 这里目前直接进行拼接是考虑到当前使用的数据集已经将imports进行了处理，并且头部的导入中不是只有import，还会有open
+    @property
+    def imports_txt(self) -> str:
+        if self.imports:
+            return "\n".join([f"{i}" for i in self.imports]) 
+        else:
+            return None
     @property
     def prompt_ready_stmt(self) -> str:
-        """预拼接好 imports + statement，方便 PromptBuilder 直接用"""
+        """只输入theorem的内容，import的内容让模型自己选择"""
         parts = []
         if self.imports:
             imports_txt = "\n".join([f"import {i}" for i in self.imports])

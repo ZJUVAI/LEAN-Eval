@@ -23,7 +23,7 @@ class ProofValidator:
     def __init__(
         self,
         lean_cmd: Optional[List[str]] = None,
-        timeout: int = 100,
+        timeout: int = 20,
         work_dir: Optional[str | Path] = None,
     ):
         self.lean_cmd: List[str] = lean_cmd or ["lake", "env", "lean"]
@@ -115,7 +115,7 @@ class ProofValidator:
         return passed, failed
 
     def validate_dir(
-        self, base_dir: Path | str, num_workers: int = os.cpu_count() + 4
+        self, base_dir: Path | str = None, num_workers: int = os.cpu_count() + 4
     ) -> List[Tuple[Path,bool,str]]:
         """
         对某条路径文件夹下的所有后缀为 .lean 的文件进行验证
@@ -128,7 +128,11 @@ class ProofValidator:
         --------
         List[Tuple[Path,bool,str]]: (文件路径,验证结果,运行信息)
         """
-        base_dir = self.root_dir / Path(base_dir)
+        
+        if base_dir is None:
+            base_dir = self.work_dir
+        else:
+            base_dir = self.root_dir / Path(base_dir)
         lean_files = list(base_dir.rglob("*.lean"))
 
         def validate_single(filepath: Path) -> Tuple[Path,bool,str]:
