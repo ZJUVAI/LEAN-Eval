@@ -63,9 +63,6 @@ class ProofValidator:
             # 失败时返回 stderr，方便调试
             return False, result.stdout.strip()
 
-    # ------------------------------------------------------------------ #
-    # （可选）直接验证字符串：先写临时文件再验证
-    # ------------------------------------------------------------------ #
     def validate_code(
     self, code: str, tmp_dir: str | Path = "./tmp_proofs", stem: str = "proof", clean_up: bool = True
 ) -> Tuple[bool, str]:

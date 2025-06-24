@@ -88,11 +88,7 @@ def resolve_imports(
     return sorted(list(final_imports))
 
 
-<<<<<<< HEAD
 def parse_lean_file(file_path: Path, dataset_root_path: Path) -> list[dict]: 
-=======
-def parse_lean_file(file_path: Path, dataset_root_path: Path) -> list[dict]: # 新增 dataset_root_path 参数
->>>>>>> 50fd1c1d37437f147740d4aed6808688d1467cf0
     """
     解析 Lean 文件以提取定理/引理和完全解析后的 imports。
     
@@ -106,44 +102,19 @@ def parse_lean_file(file_path: Path, dataset_root_path: Path) -> list[dict]: # �
         print(f"无法读取 {file_path}: {e}")
         return []
 
-<<<<<<< HEAD
     direct_imports = IMPORT_RE.findall(content)
 
     initial_visited_set = {file_path.resolve()} # 解析自身时，自身已被访问
     
     resolved_imports = resolve_imports(direct_imports, file_path.parent, initial_visited_set, dataset_root_path)
 
-=======
-    # 1. 直接从当前文件提取导入
-    direct_imports = IMPORT_RE.findall(content)
-    
-    # 2. 解析并展开所有导入 (包括间接的)
-    # already_visited 集合在每次 parse_lean_file 调用时独立，
-    # 但对于 resolve_imports 的单次完整调用链是共享的。
-    # 我们还需要传入文件自身的路径，以便 resolve_imports 知道当前文件的上下文
-    # file_path.parent 是当前文件的目录
-    # dataset_root_path 是整个数据集的根，用于定位项目内的其他 .lean 文件
-    
-    # 对于 resolve_imports，already_visited 应该从解析 file_path 开始
-    initial_visited_set = {file_path.resolve()} # 解析自身时，自身已被访问
-    
-    # print(f"Parsing file: {file_path}")
-    # print(f"  Direct imports: {direct_imports}")
-    resolved_imports = resolve_imports(direct_imports, file_path.parent, initial_visited_set, dataset_root_path)
-    # print(f"  Resolved imports for {file_path.name}: {resolved_imports}")
-
->>>>>>> 50fd1c1d37437f147740d4aed6808688d1467cf0
     theorems = []
     for match in THEOREM_RE.finditer(content):
         full_match_text = match.group(0)
         end_match = re.search(r"\s*:=(?:\s*(?:by|sorry|begin))", full_match_text, re.MULTILINE | re.DOTALL)
 
         theorem_name = match.group(1)
-<<<<<<< HEAD
         unique_id = f"{file_path.stem}_{theorem_name}" 
-=======
-        unique_id = f"{file_path.stem}_{theorem_name}" # 使用原始文件名和定理名构造ID
->>>>>>> 50fd1c1d37437f147740d4aed6808688d1467cf0
 
         if end_match:
             statement_text = full_match_text[:end_match.start()].strip()
@@ -212,7 +183,6 @@ def extract_imports(imports_string: str) -> List[str]:
             output.append(line)
     return output
 
-<<<<<<< HEAD
 
 def process_jsonl_dataset(download_path: str,ouput_json_path: str):
     """将已有的 JSONl 文件处理成 JSON 数据集"""
@@ -232,26 +202,6 @@ def process_jsonl_dataset(download_path: str,ouput_json_path: str):
                     "difficulty":1
                 })
 
-=======
-def process_jsonl_dataset(download_path: str,ouput_json_path: str):
-    """将已有的 JSONl 文件处理成 JSON 数据集"""
-    dataset_root = Path(download_path).resolve()
-
-    theorems = []
-    try:
-        with open(dataset_root) as f:
-            for line in f:
-                item = json.loads(line)
-                header = [] if "header" not in item else extract_imports(item["header"])
-                theorems.append({
-                    "id":item["name"],
-                    "imports": header,
-                    "statement":item["formal_statement"],
-                    "source_file":str(download_path),
-                    "difficulty":1
-                })
-
->>>>>>> 50fd1c1d37437f147740d4aed6808688d1467cf0
     except Exception as e:
         print(f"jsonl dataset loading error: {e}")
         return
@@ -262,7 +212,3 @@ def process_jsonl_dataset(download_path: str,ouput_json_path: str):
     with open(ouput_json_path,'w',encoding='utf-8') as f:
         json.dump(theorems,f,indent=2,ensure_ascii=False)
     print("处理完成")
-<<<<<<< HEAD
-
-=======
->>>>>>> 50fd1c1d37437f147740d4aed6808688d1467cf0
