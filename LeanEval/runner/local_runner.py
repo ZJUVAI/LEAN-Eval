@@ -18,6 +18,7 @@ from LeanEval.datasets import JsonDataset, LeanItem
 from LeanEval.models import ModelRegistry, HuggingFaceModelConfig
 from LeanEval.validator.proof_validator import ProofValidator
 from LeanEval.utils import extract_lean_block
+import pdb
 
 class LocalHuggingFaceRunner:
     """
@@ -35,7 +36,7 @@ class LocalHuggingFaceRunner:
         max_new_tokens: int = 4096,
         temperature: float = 0.1,
         mixed_precision: str = 'fp16', # 'no', 'fp16', 'bf16'
-        validation_timeout: int = 60,
+        validation_timeout: int = 120,
         hf_config_overrides: Dict[str, Any] = None,
         num_proof_rounds: int = 1,
         num_validation_workers:int = 4 # 这个参数在当前实现中未使用，但保留
@@ -128,9 +129,10 @@ class LocalHuggingFaceRunner:
                             
         for filepath_str in progress_bar:
             try:
-                filepath_obj = Path(filepath_str)
-                success, msg = validator.validate_file(filepath_obj)
+                self.accelerator.print(f"Proc {self.accelerator.process_index}: Validating file {filepath_str}")
+                success, msg = validator.validate_file(filepath_str)
                 local_results_map[filepath_str] = {"status": "Passed" if success else "Failed", "log": msg}
+                self.accelerator.print(f"Proc {self.accelerator.process_index}: Validation result for {filepath_str}: {local_results_map[filepath_str]}")
             except Exception as e:
                 self.accelerator.print(f"Error validating file {filepath_str} on process {self.accelerator.process_index}: {e}", file=sys.stderr)
                 local_results_map[filepath_str] = {"status": "ErrorInValidation", "log": str(e)}
@@ -199,7 +201,8 @@ class LocalHuggingFaceRunner:
                         imports_block = "\n".join(imports_list)
                         statement = output_data.get("statement", "")
                         proof_body = extract_lean_block(model_gen_code) or model_gen_code
-                        full_code = f"{imports_block}\n\n{statement} := by\n  {proof_body}"
+                        # full_code = f"{imports_block}\n\n{statement} := by\n  {proof_body}"
+                        full_code = f"{imports_block}\n  {proof_body}"
 
                         safe_id = str(item_id).replace("/", "_").replace("\\", "_")
                         proof_file = self.proof_save_dir / f"proof_{safe_id}_round{round_num}_proc{output_data.get('process_index','X')}_{time_ns()}.lean"
@@ -239,7 +242,7 @@ class LocalHuggingFaceRunner:
                         # flat list of (key, value) tuples into a dictionary.
                         try:
                             # Flatten the list first, as gather_object returns a list of lists.
-                            all_items = [item for sublist in gathered_results for item in sublist]
+                            all_items = [item for item in gathered_results]
                             validation_results_map_this_round = dict(all_items)
                         except (TypeError, ValueError) as e:
                              self.accelerator.print(f"CRITICAL: Could not convert gathered results to dictionary. Error: {e}")

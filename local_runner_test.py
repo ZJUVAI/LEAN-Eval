@@ -10,7 +10,7 @@ def main():
     # process_dataset.process_jsonl_dataset(download_path=download_path,ouput_json_path=output_json_path)
     runner = LocalHuggingFaceRunner(
         model_id="deepseek-ai/DeepSeek-Prover-V2-7B",
-        dataset_path="./data/json/minilean.json",
+        dataset_path="./data/json/minif2f.json",
         output_dir_base="./outputs_runner_test",
         per_device_batch_size=1,
         max_new_tokens=512,
