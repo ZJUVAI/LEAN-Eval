@@ -9,6 +9,9 @@ from LeanEval.models.base_api import BaseAPIModel #模型基类
 from LeanEval.prompt import PromptBuilder #构建器
 from LeanEval.utils.handle_lean_result import handle_lean_str #处理Lean结果字符串的工具函数
 from LeanEval.utils.extract_lean_code import extract_lean_block
+import threading
+import queue
+import sys
 
 class BFSProver:
     def __init__(self, model, prompt_builder: PromptBuilder, tmp_dir: str | Path = "./tmp_tree_proofs", timeout: int = 1200, error_threshold: int = 2, degree: int = 5):
@@ -109,8 +112,13 @@ class BFSProver:
                     heap.put_nowait((new_node.height, new_node))
 
 
-    def thread_prove(self, goal, num_workers: int = os.cpu_count() + 4) -> Tuple[Node, str]:
+    def thread_prove(self, goal: str, num_workers: int = os.cpu_count() + 4) -> Tuple[Optional[Node], Optional[str]]:
+        """
+        使用多线程和 BFS 搜索来并行证明目标。
+        此版本修复了先前版本中的死锁问题，并优化了线程管理。
+        """
         Root = Node(leanCode=goal, height=0)
+        # 优先队列是线程安全的
         heap = PriorityQueue()
         heap.put_nowait((Root.height, Root))
 
@@ -118,72 +126,109 @@ class BFSProver:
         tmp_dir.mkdir(parents=True, exist_ok=True)
 
         start_time = time.time()
-        Proved = False
-        ProvedNode: Node = None
+        # Proved 事件用于向所有线程广播“任务已完成”的信号
+        Proved = threading.Event()
+        ProvedNode: Optional[Node] = None
+        # node_lock 用于在多线程环境下安全地写入 ProvedNode
+        node_lock = threading.Lock()
 
         def worker():
             """
-            工作线程：从队列取节点，处理后将子节点放回队列
+            工作线程：从队列取节点，处理后将子节点放回队列。
             """
-            nonlocal Proved
-            nonlocal start_time
-            nonlocal tmp_dir
-            nonlocal Root
-            nonlocal ProvedNode
-            nonlocal heap
-
-            while True:
+            while not Proved.is_set():
                 try:
-                    node: Node = heap.get()[1]
+                    # 1. 从队列中获取任务，设置一个短超时
+                    #    这可以防止在队列暂时为空时线程永久阻塞，
+                    #    并允许线程周期性地检查 Proved 状态。
+                    node_tuple = heap.get(timeout=0.5)
+                    node: Node = node_tuple[1]
 
-                    if node is None:
-                        heap.task_done()
-                        break
+                    # 2. 冗余检查，确保在等待期间状态没有改变
+                    if Proved.is_set() or (time.time() - start_time > self.timeout):
+                        break # 如果已证明或超时，立即退出循环
 
-                    if Proved or time.time() - start_time > self.timeout or node.status != Status.Open:
+                    if node.status != Status.Open:
                         heap.task_done()
                         continue
 
-                    tmp_file = tmp_dir / f"{node.id}.lean"
-
+                    # 为每个线程和节点创建唯一的临时文件
+                    tmp_file = tmp_dir / f"proof_{threading.get_ident()}_{node.id}.lean"
                     tips, error = self.run_node(node, tmp_file)
 
+                    # 3. 如果根节点状态变为 Proved，则设置事件并记录结果
                     if Root.status == Status.Proved:
-                        Proved = True
-                        ProvedNode = node
-                        heap.task_done()
-                        continue
+                        if not Proved.is_set(): # 避免重复设置和写入
+                            with node_lock:
+                                # 双重检查锁定，确保只记录第一个成功的证明
+                                if ProvedNode is None:
+                                    ProvedNode = node
+                            Proved.set() # 广播成功信号
+                        break # 当前线程完成使命，退出
 
+                    # 4. 如果节点仍然开放，则调用模型生成新的策略
                     if node.status == Status.Open:
-                        prompts = []
-                        prompt = self.prompt_builder.build_chat_for_tactic(node.leanCode, tips)
-                        for _ in range(self.degree):
-                            prompts.append(prompt)
-                        tactics: List[str] = self.model.predict(prompts)
+                        chat_prompt = self.prompt_builder.build_chat_for_tactic(node.leanCode, tips)
+                        
+                        string_prompt = self.model.tokenizer.apply_chat_template(
+                            chat_prompt, 
+                            tokenize=False, 
+                            add_generation_prompt=True
+                        )
+                        
+                        prompts_for_batch = [string_prompt] * self.degree
+                        tactics: List[str] = self.model.batch_predict(prompts_for_batch)
+
                         for t in tactics:
                             t = extract_lean_block(t)
+                            if not t: continue
+
                             new_edge = Edge(tactic=t, height=node.height, src=node)
-                            new_node = Node(leanCode=node.leanCode+"\n"+t, height=node.height + 1, src=new_edge)
+                            new_node = Node(leanCode=node.leanCode + "\n  " + t, height=node.height + 1, src=new_edge)
                             new_edge.dst = new_node
                             node.dst.append(new_edge)
+                            # 将新生成的节点放回队列，供其他线程处理
                             heap.put((new_node.height, new_node))
-                    heap.task_done()  # 标记任务完成
-                except Exception as e:
-                    print(f"线程退出: {e}")
-                    break
-
-            
-        with ThreadPoolExecutor(max_workers=num_workers) as executor:
-            for _ in range(num_workers):
-                executor.submit(worker)
-            heap.join()
-
-            for _ in range(num_workers):
-                heap.put((0, None))
-            heap.join()
                     
-        if Proved:
-            return Root, ProvedNode.leanCode
-        else:
-            return None, "timeout"
+                    heap.task_done()
+
+                except queue.Empty:
+                    # 队列为空是正常情况，继续下一次循环检查 Proved 状态
+                    continue
+                except Exception as e:
+                    print(f"线程 {threading.get_ident()} 发生致命错误并退出: {type(e).__name__}: {e}", file=sys.stderr)
+                    # 可以在此设置 Proved 事件来停止所有其他线程
+                    # Proved.set() 
+                    break
+        
+        # --- 主线程逻辑 ---
+        executor = ThreadPoolExecutor(max_workers=num_workers)
+        try:
+            # 提交所有工作线程
+            futures = [executor.submit(worker) for _ in range(num_workers)]
+
+            # 主线程的等待循环
+            while time.time() - start_time < self.timeout:
+                if Proved.is_set():
+                    break
+                # 如果所有工作线程都因为异常或其他原因结束了，主线程也应退出等待
+                if all(f.done() for f in futures):
+                    break
+                time.sleep(0.1)  # 短暂休眠，避免CPU空转
+        
+        finally:
+            # 无论是因为成功、超时还是异常，都要确保设置 Proved 事件
+            # 以便所有正在 heap.get() 上等待的线程能够退出它们的循环
+            Proved.set()
             
+            # 关闭线程池，等待所有线程优雅地退出
+            # `shutdown(wait=True)` 会等待所有已提交的任务完成，
+            # 因为 Proved 事件已设置，所有 worker 都会很快结束。
+            executor.shutdown(wait=True)
+
+        # 最终返回结果
+        with node_lock:
+            if ProvedNode:
+                return Root, ProvedNode.leanCode
+            else:
+                return None, "Timeout or no solution found"

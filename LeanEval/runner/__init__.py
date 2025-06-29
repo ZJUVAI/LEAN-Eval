@@ -1,1 +1,2 @@
 from .local_runner import LocalHuggingFaceRunner
+from .local_runner_search import LocalSearchRunner

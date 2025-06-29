@@ -90,25 +90,70 @@ class FewShotPromptBuilder(PromptBuilder):
         messages.append({"role": "user", "content": user_msg})
         return messages
     
-    def build_chat_for_tactic(self, leanCode: str, tips: List[str]) -> str:
-        system_msg: str = "你是 Lean4 的专家，请根据已有的定理证明过程和有关目标的提示，补充一行证明，使其更接近证明完成，只返回完整 Lean 代码，风格见示例。"
-        messages: List[dict] = [{"role": "system", "content": system_msg}]
-        # few-shot 示例
-        for u, a in self.shots:
-            messages.append({"role": "user", "content": u})
-            messages.append({"role": "assistant", "content": a})
+    # def build_chat_for_tactic(self, leanCode: str, tips: List[str]) -> str:
+    #     system_msg: str = self.system_msg
+    #     messages: List[dict] = [{"role": "system", "content": system_msg}]
+    #     # few-shot 示例
+    #     for u, a in self.shots:
+    #         messages.append({"role": "user", "content": u})
+    #         messages.append({"role": "assistant", "content": a})
 
-        # 当前题目
-        for idx, tip in enumerate(tips):
-            user_prefix = f"下面给出第{idx + 1}个提示:\n\n"
-            user_msg = user_prefix + tip
-            messages.append({"role": "user", "content": user_msg})
+    #     # 当前题目
+    #     for idx, tip in enumerate(tips):
+    #         user_prefix = f"下面给出第{idx + 1}个提示:\n\n"
+    #         user_msg = user_prefix + tip
+    #         messages.append({"role": "user", "content": user_msg})
 
-        user_prefix = "请对以下Lean定理证明补充一行:\n\n"
-        user_msg = user_prefix + _make_lean_block(
-            f"{leanCode}\n  -- the next line of the proof here"
+    #     user_prefix = "请对以下Lean定理证明补充一行:\n\n"
+    #     user_msg = user_prefix + _make_lean_block(
+    #         f"{leanCode}\n  -- the next line of the proof here"
+    #     )
+    #     messages.append({"role": "user", "content": user_msg})
+    #     return messages
+
+    def build_chat_for_tactic(self, leanCode: str, tips: List[str]) -> List[dict]:
+        """
+        为 BFSProver 构建一个优化的 prompt，用于生成下一步的 tactic。
+
+        这个 prompt 旨在模拟一个 Lean 专家的思考过程：
+        1.  分析当前的证明状态（leanCode）。
+        2.  聚焦于当前的待办目标（tips）。
+        3.  提出最有可能的、单一的下一步策略（tactic）。
+        """
+        # 1. 一个高度特异性的系统消息，明确指示模型任务
+        system_msg = (
+            "You are an expert Lean 4 proof engineer. "
+            "Your task is to provide the single most promising tactic to make progress on the given proof state. "
+            "Analyze the provided goals and the current proof. "
+            "Respond with ONLY a single, valid Lean 4 tactic in a code block. Do not provide explanations or surrounding text."
         )
-        messages.append({"role": "user", "content": user_msg})
+
+        messages = [{"role": "system", "content": system_msg}]
+
+        # 2. Few-shot 示例（这里的 self.shots 应为“单步策略”的示例）
+        #    这些示例教模型如何根据上下文生成下一步 tactic
+        for user_example, assistant_example in self.shots:
+            messages.append({"role": "user", "content": user_example})
+            messages.append({"role": "assistant", "content": assistant_example})
+
+        # 3. 构建当前问题的 User Prompt，采用清晰的结构化格式
+        #    将所有 tips 格式化为一个易于阅读的列表
+        formatted_tips = "\n".join(f"- {tip.strip()}" for tip in tips)
+        if not formatted_tips:
+            formatted_tips = "No specific goals from Lean InfoView. Please analyze the overall proof statement."
+
+        # 创建一个结构化的 user message，清晰地分离代码、目标和问题
+        user_content = (
+            "Given the following partial proof and the current goals, what is the next single tactic to apply?\n\n"
+            "### Current Proof State:\n"
+            f"{_make_lean_block(leanCode)}\n\n"
+            "### Current Goals from Lean InfoView:\n"
+            f"```\n{formatted_tips}\n```\n\n"
+            "Your response must be the next single tactic."
+        )
+
+        messages.append({"role": "user", "content": user_content})
+        
         return messages
 
     def build_str(self, item: LeanItem) -> str:   # pragma: no cover

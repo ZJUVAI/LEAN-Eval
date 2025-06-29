@@ -39,7 +39,6 @@ class LocalHuggingFaceRunner:
         validation_timeout: int = 120,
         hf_config_overrides: Dict[str, Any] = None,
         num_proof_rounds: int = 1,
-        num_validation_workers:int = 4 # 这个参数在当前实现中未使用，但保留
     ):
         self.model_id = model_id
         self.dataset_path = dataset_path
@@ -53,7 +52,6 @@ class LocalHuggingFaceRunner:
         self.validation_timeout = validation_timeout
         self.hf_config_overrides = hf_config_overrides or {}
         self.num_proof_rounds = num_proof_rounds
-        self.num_validation_workers = num_validation_workers
 
         self.accelerator = Accelerator(mixed_precision=self.mixed_precision)
         self.device = self.accelerator.device
@@ -124,7 +122,6 @@ class LocalHuggingFaceRunner:
         local_results_map: Dict[str, Dict[str, str]] = {}
         progress_bar = tqdm(files_for_this_process, 
                             desc=f"Validating (Proc {self.accelerator.process_index})",
-                            disable=not self.accelerator.is_local_main_process,
                             position=self.accelerator.process_index)
                             
         for filepath_str in progress_bar:
@@ -173,7 +170,11 @@ class LocalHuggingFaceRunner:
                 
                 current_process_outputs_this_round = []
                 hf_model_wrapper.model.eval()
-                progress_bar = tqdm(prepared_round_dataloader, desc=f"Round {round_num} Inference (Proc {self.accelerator.process_index})", disable=not self.accelerator.is_local_main_process)
+                progress_bar = tqdm(
+                    prepared_round_dataloader, 
+                    desc=f"Round {round_num} Inference (Proc {self.accelerator.process_index})", 
+                    position=self.accelerator.process_index
+                    )
                 
                 with torch.no_grad():
                     for batch_data in progress_bar:
@@ -232,10 +233,10 @@ class LocalHuggingFaceRunner:
                 if files_to_validate_on_all_procs:
                     local_validation_results = self._run_validation_distributed(files_to_validate_on_all_procs)
                     
+                    self.accelerator.print("Gathering validation results...")
                     gathered_results = gather_object(local_validation_results)
                     
                     if self.accelerator.is_main_process:
-                        self.accelerator.print("Gathering validation results...")
                         
                         # **FINAL FIX**: The log shows `gather_object` returns a flat list of items 
                         # from all workers when each worker returns a list. We can directly convert this
