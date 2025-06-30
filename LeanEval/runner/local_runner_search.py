@@ -26,7 +26,6 @@ from LeanEval.utils import extract_lean_block
 class LocalSearchRunner:
     """
     一个使用Hugging Face模型和BFS搜索式证明在本地运行LeanEval评估的Runner。
-    它严格遵循您提供的多卡运行架构，但将核心证明逻辑替换为BFSProver。
     """
     def __init__(
         self,
@@ -35,14 +34,14 @@ class LocalSearchRunner:
         output_dir_base: str = "./outputs_local_search_runner",
         # --- BFSProver 相关配置 ---
         tactic_shots: List[Tuple[str, str]] = None,
-        bfs_degree: int = 8,
+        bfs_degree: int = 4,
         bfs_timeout: int = 1800,
         bfs_prover_num_workers: int = 4,
         # --- 模型与环境配置 ---
         per_device_batch_size: int = 1, # 搜索任务通常一次只处理一个问题
         dataloader_num_workers: int = 2,
         # 为生成单步策略优化的模型参数
-        max_new_tokens: int = 128,
+        max_new_tokens: int = 4096,
         temperature: float = 0.4,
         mixed_precision: str = 'fp16', # 'no', 'fp16', 'bf16'
         hf_config_overrides: Dict[str, Any] = None,
@@ -165,7 +164,7 @@ class LocalSearchRunner:
             for batch_items in progress_bar:
                 for item in batch_items:
                     # 构造初始目标
-                    goal_to_prove = f"{item.prompt_ready_stmt} := by\n"
+                    goal_to_prove = f"{item.prompt_ready_stmt}\n"
                     
                     self.accelerator.print(f"[Proc {self.accelerator.process_index}] 开始搜索证明: {item.id}")
                     search_start_time = time()

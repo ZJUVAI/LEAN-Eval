@@ -115,7 +115,6 @@ class BFSProver:
     def thread_prove(self, goal: str, num_workers: int = os.cpu_count() + 4) -> Tuple[Optional[Node], Optional[str]]:
         """
         使用多线程和 BFS 搜索来并行证明目标。
-        此版本修复了先前版本中的死锁问题，并优化了线程管理。
         """
         Root = Node(leanCode=goal, height=0)
         # 优先队列是线程安全的
@@ -146,15 +145,18 @@ class BFSProver:
 
                     # 2. 冗余检查，确保在等待期间状态没有改变
                     if Proved.is_set() or (time.time() - start_time > self.timeout):
+                        log_msg = f"线程 {threading.get_ident()} 发现超时或已证明，退出循环"
+                        print(log_msg, file=sys.stderr)
                         break # 如果已证明或超时，立即退出循环
 
                     if node.status != Status.Open:
-                        heap.task_done()
+                        heap.task_done() # Proved 或 Error
                         continue
 
                     # 为每个线程和节点创建唯一的临时文件
                     tmp_file = tmp_dir / f"proof_{threading.get_ident()}_{node.id}.lean"
                     tips, error = self.run_node(node, tmp_file)
+                    print(f"线程 {threading.get_ident()} 处理节点 {node.id} 完成，状态: {node.status}, 错误: {error}")
 
                     # 3. 如果根节点状态变为 Proved，则设置事件并记录结果
                     if Root.status == Status.Proved:
@@ -181,8 +183,9 @@ class BFSProver:
 
                         for t in tactics:
                             t = extract_lean_block(t)
-                            if not t: continue
-
+                            if not t: 
+                                continue
+                            print(f"线程 {threading.get_ident()} 获取策略: {t}")
                             new_edge = Edge(tactic=t, height=node.height, src=node)
                             new_node = Node(leanCode=node.leanCode + "\n  " + t, height=node.height + 1, src=new_edge)
                             new_edge.dst = new_node

@@ -21,7 +21,6 @@ from tenacity import (
 from .base import BaseModel, Config, ModelRegistry
 
 
-# ---------- 日志设置 ---------- #
 logger = logging.getLogger(__name__)
 
 
@@ -36,7 +35,6 @@ class BaseAPIModel(BaseModel):
         super().__init__(cfg) # BaseModel的__init__会调用self.load()
 
     def load(self) -> None:
-        """API型模型通常无需重量级加载。初始化Session。"""
         self._loaded = True
         if not self._session: # 防止重复加载时重复创建
             self._session = requests.Session()
