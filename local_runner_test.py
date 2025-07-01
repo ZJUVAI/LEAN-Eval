@@ -43,7 +43,7 @@ def run_search_evaluation():
         output_dir_base="./outputs_runner_test",
         tactic_shots=tactic_shots,
         bfs_degree=5,
-        bfs_timeout=1800,
+        bfs_timeout=30,
         mixed_precision='bf16' # 或 'fp16'
     )
     runner.run()

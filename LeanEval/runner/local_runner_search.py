@@ -170,13 +170,13 @@ class LocalSearchRunner:
                     search_start_time = time()
 
                     # 调用 BFSProver 进行搜索
-                    _, final_proof_code = bfs_prover.thread_prove(
+                    root, final_proof_code = bfs_prover.thread_prove(
                         goal_to_prove, 
                         num_workers=self.bfs_prover_num_workers
                     )
 
                     search_duration = time() - search_start_time
-                    is_proved = final_proof_code is not None
+                    is_proved = root is not None
 
                     self.accelerator.print(f"[Proc {self.accelerator.process_index}] 完成搜索: {item.id}, 证明成功: {is_proved}, 用时: {search_duration:.2f}s")
                     
@@ -205,7 +205,7 @@ class LocalSearchRunner:
 
             if self.accelerator.is_main_process:
                 self.accelerator.print("\n--- 所有搜索完成，开始聚合结果 ---")
-                final_results = [item for sublist in gathered_outputs_list for item in sublist]
+                final_results = [item for item in gathered_outputs_list ]
                 self.accelerator.print(f"从所有进程共收集到 {len(final_results)} 条结果。")
 
                 with self.results_log_file.open("w", encoding="utf-8") as f:
