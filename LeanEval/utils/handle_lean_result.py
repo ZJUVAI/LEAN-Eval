@@ -1,84 +1,57 @@
 from typing import Tuple
+import re
+from typing import List
 
-def discurd_lean_result(short_str: str, string_array: list[str]) -> list[str]:
+def handle_lean_str(leanResult: str) -> Tuple[List[str], List[str]]:
     """
-    过滤掉列表中包含短字符串的字符串
-    
-    Args:
-    short_str (str): 要检查的短字符串
-    string_array (list): 字符串列表
-    
-    返回:
-    list: 不包含short_str的新列表
-    """
-    return [s for s in string_array if short_str not in s]
-
-def split_lean_result(short_str: str, long_str: str):
-    """
-    以短字符串作为分隔依据切分长字符串，确保每个切片的开头都是短字符串
-    
-    Args:
-        short_str (str): 作为分隔依据的短字符串（如 "output"）
-        long_str (str): 需要切分的长字符串
-        
-    Returns:
-        list[str]: 切分后的字符串列表，每个元素都以 short_str 开头
-    """
-    parts = long_str.split(short_str)
-    
-    if parts and not parts[0].startswith(short_str):
-        parts = parts[1:]
-    
-    result = [short_str + part for part in parts if part.strip()]
-    
-    return result
-
-def handle_lean_result(short_str, string_array) -> Tuple[list[str], list[str]]:
-    """
-    根据短字符串筛选字符串数组，并返回分类结果
-    
-    Args:
-        short_str (str): 要匹配的短字符串
-        string_array (list[str]): 待筛选的字符串数组
-        
-    Returns:
-        str: 包含的和不包含短字符串的字符串列表
-    """
-    have = []
-    havenot = []
-    
-    for s in string_array:
-        if short_str in s:
-            have.append(s)
-        else:
-            havenot.append(s)
-    
-    return have, havenot
-
-def handle_lean_str(leanResult: str) -> Tuple[list[str], list[str]]:
-    """
-    处理 Lean 的输出结果，返回有效信息和错误
+    处理真实的 Lean 编译器输出结果，返回“待办目标”和“错误”的完整信息块。
 
     Args:
-        leanResult (str): Lean 的输出结果
+        leanResult (str): 从 Lean 进程捕获的原始 stdout/stderr 字符串。
 
     Returns:
-        Tuple[list[str], list[str]]: 有效信息和错误列表
+        Tuple[List[str], List[str]]: 
+            - tips: 包含 'unsolved goals' 的完整信息块列表。
+            - errors: 其他 'error' 信息块的列表。
     """
-    split_result = split_lean_result("LeanEval", leanResult)
-    have, havenot = handle_lean_result("unsolved goals", split_result)
-    havenot = discurd_lean_result("warning", havenot)
-    return have, havenot
+    if not isinstance(leanResult, str) or not leanResult.strip():
+        return [], []
 
-if __name__ == "__main__":
-    leanResult = (
-        "LeanEval: unsolved goals (1)\n"
-        "LeanEval: error (1)\n"
-        "LeanEval: unsolved goals (2)\n"
-        "LeanEval: warning (1)\n"
-        "LeanEval: error (2)\n"
-        "LeanEval: warning (2)\n"
+    unsolved_goals_tips = []
+    error_messages = []
+
+    # 定义一个正则表达式，用于匹配消息的头部
+    # 例如: "path/to/file.lean:10:4: error:"
+    # 捕获组 ( ... ) 会让 re.split 保留分隔符
+    message_header_pattern = re.compile(
+        r"^(.*?:\d+:\d+:\s*(?:error|warning|note))", 
+        re.MULTILINE
     )
-    have, havenot = handle_lean_str(leanResult)
-    print(have)
-    print(havenot)
+
+    # 使用正则表达式分割整个输出字符串
+    # 结果会是 [before_first_header, header1, content1, header2, content2, ...]
+    parts = message_header_pattern.split(leanResult)
+    
+    # 第一个元素是第一个消息头之前的所有内容，通常为空或无用，我们忽略它
+    # 然后以步长2遍历，每次处理一个 (header, content) 对
+    for i in range(1, len(parts), 2):
+        header = parts[i]
+        # content 可能包含多行，所以我们保留它的原始格式
+        content = parts[i+1]
+        
+        # 将头部和内容重新组合成一个完整的消息块
+        full_message_block = (header + content).strip()
+        
+        header_lower = header.lower()
+
+        # 判断消息块的类型
+        if "error: unsolved goals" in header_lower:
+            # 这是一个包含待办目标的信息块，是我们需要的 "tips"
+            unsolved_goals_tips.append(full_message_block)
+        elif "error" in header_lower:
+            # 其他类型的错误信息块
+            error_messages.append(full_message_block)
+        
+        # 'warning' 和 'note' 类型的消息块被自动忽略
+
+    return unsolved_goals_tips, error_messages

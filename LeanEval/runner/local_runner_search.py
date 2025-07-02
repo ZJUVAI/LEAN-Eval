@@ -41,7 +41,7 @@ class LocalSearchRunner:
             # --- 模型与环境配置 ---
             per_device_batch_size: int = 1, # 搜索任务通常一次只处理一个问题
             dataloader_num_workers: int = 2,
-            max_new_tokens: int = 128,
+            max_new_tokens: int = 4096,
             temperature: float = 0.4,
             mixed_precision: str = 'fp16',
             hf_config_overrides: Dict[str, Any] = None,
@@ -179,9 +179,8 @@ class LocalSearchRunner:
                     search_start_time = time()
 
                     # 直接调用 prover，它会返回一个包含所有需要信息的字典
-                    search_result = bfs_prover.thread_prove(
-                        goal_to_prove, 
-                        num_workers=self.bfs_prover_num_workers
+                    search_result = bfs_prover.prove(
+                        goal_to_prove
                     )
 
                     search_duration = time() - search_start_time

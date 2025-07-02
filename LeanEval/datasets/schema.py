@@ -22,7 +22,7 @@ class LeanItem(BaseModel, frozen=True, extra="allow"):
         """只输入theorem的内容，import的内容让模型自己选择"""
         parts = []
         if self.imports:
-            imports_txt = "\n".join([f"import {i}" for i in self.imports])
+            imports_txt = "\n".join([f"{i}" for i in self.imports])
             parts.append(imports_txt)
         if self.extra_ctx:
             parts.append(self.extra_ctx)

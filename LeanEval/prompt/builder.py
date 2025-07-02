@@ -117,7 +117,7 @@ class FewShotPromptBuilder(PromptBuilder):
         return messages
 
     # <<< --- 核心修改：重写此方法以使用模板管理器 --- >>>
-    def build_chat_for_tactic(self, lean_code: str, tips: List[str]) -> List[dict]:
+    def build_chat_for_tactic(self, lean_code: str, tips: List[str], errors: List[str]) -> List[dict]:
         """
         为 BFSProver 构建一个优化的 prompt，用于生成下一步的 tactic。
         此方法现在使用外部JSON模板来构造请求。
@@ -127,7 +127,8 @@ class FewShotPromptBuilder(PromptBuilder):
         return manager.render_chat_prompt(
             'tactic_generation_multiple',
             lean_code=lean_code,
-            tips=tips
+            tips=tips,
+            errors=errors
         )
     # <<< --- 修改结束 --- >>>
 
