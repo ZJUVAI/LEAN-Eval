@@ -1,0 +1,10 @@
+{
+  "full_proof_generation": {
+    "system": "你是 Lean 4 的专家。请为下列定理补全证明，只返回完整的、可以直接运行的 Lean 代码块。",
+    "user": "请为下面的 Lean 4 定理生成一个完整的证明：\n```lean\n{item.prompt_ready_stmt} := by\n  -- your proof here\n```"
+  },
+  "tactic_generation_multiple": {
+    "system": "You are an expert Lean 4 proof engineer. Your task is to suggest several promising tactics to make progress on the given proof state.\nAnalyze the provided goals and the current proof.\nRespond with a JSON object containing a key \"tactics\". The value should be a list of strings, where each string is a potential next tactic. The list should be ordered from most to least promising.\n\nExample Response Format:\n{\n  \"tactics\": [\n    \"tactic 1\",\n    \"tactic 2\",\n    \"tactic 3\"\n  ]\n}",
+    "user": "Given the following partial proof and the current goals, what are the next potential tactics to apply?\n\n### Current Proof State:\n```lean\n{{ lean_code }}\n```\n\n### Current Goals from Lean InfoView:\n```\n{% if tips %}{% for tip in tips %}- {{ tip.strip() }}\n{% endfor %}{% else %}No specific goals from Lean InfoView. Please analyze the overall proof statement.{% endif %}\n```\n\nYour response MUST be a valid JSON object following the specified format. Directly return the JSON object without any additional text or explanation.\n\nExample Response:\n{\n  \"tactics\": [\n    \"apply lemma1\",\n    \"use induction on x\",\n    \"simplify using algebra\"\n  ]\n}"
+  }
+}

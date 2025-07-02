@@ -39,11 +39,11 @@ def run_search_evaluation():
     
     runner = LocalSearchRunner(
         model_id="deepseek-ai/DeepSeek-Prover-V2-7B",
-        dataset_path="./data/json/minilean.json",
+        dataset_path="./data/json/ez_lean.json",
         output_dir_base="./outputs_runner_test",
         tactic_shots=tactic_shots,
         bfs_degree=5,
-        bfs_timeout=30,
+        bfs_timeout=300,
         mixed_precision='bf16' # 或 'fp16'
     )
     runner.run()

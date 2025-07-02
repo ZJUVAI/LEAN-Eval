@@ -125,7 +125,6 @@ class HuggingFaceModel(BaseModel):
         result_text = self.tokenizer.decode(generated_ids, skip_special_tokens=True)
 
         return result_text.strip()
-    # <<< --- 修改结束 --- >>>
 
     # <<< --- 相应地，也更新 batch_predict 方法 --- >>>
     def batch_predict(

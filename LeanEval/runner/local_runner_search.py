@@ -1,4 +1,4 @@
-# LeanEval/runner/local_runner_with_search.py
+# LeanEval/runner/local_runner_search.py
 import os
 import torch
 import sys
@@ -26,59 +26,66 @@ from LeanEval.utils import extract_lean_block
 class LocalSearchRunner:
     """
     一个使用Hugging Face模型和BFS搜索式证明在本地运行LeanEval评估的Runner。
+    它负责协调数据集、模型和Prover，并记录详细的实验结果。
     """
     def __init__(
-        self,
-        model_id: str,
-        dataset_path: str,
-        output_dir_base: str = "./outputs_local_search_runner",
-        # --- BFSProver 相关配置 ---
-        tactic_shots: List[Tuple[str, str]] = None,
-        bfs_degree: int = 4,
-        bfs_timeout: int = 1800,
-        bfs_prover_num_workers: int = 4,
-        # --- 模型与环境配置 ---
-        per_device_batch_size: int = 1, # 搜索任务通常一次只处理一个问题
-        dataloader_num_workers: int = 2,
-        # 为生成单步策略优化的模型参数
-        max_new_tokens: int = 4096,
-        temperature: float = 0.4,
-        mixed_precision: str = 'fp16', # 'no', 'fp16', 'bf16'
-        hf_config_overrides: Dict[str, Any] = None,
-    ):
-        # 初始化 Accelerator
-        self.accelerator = Accelerator(mixed_precision=mixed_precision if torch.cuda.is_available() else 'no')
-        self.device = self.accelerator.device
+            self,
+            model_id: str,
+            dataset_path: str,
+            output_dir_base: str = "./outputs_local_search_runner",
+            # --- BFSProver 相关配置 ---
+            tactic_shots: List[Tuple[str, str]] = None,
+            bfs_degree: int = 4,
+            bfs_timeout: int = 1800,
+            bfs_prover_num_workers: int = 4,
+            # --- 模型与环境配置 ---
+            per_device_batch_size: int = 1, # 搜索任务通常一次只处理一个问题
+            dataloader_num_workers: int = 2,
+            max_new_tokens: int = 128,
+            temperature: float = 0.4,
+            mixed_precision: str = 'fp16',
+            hf_config_overrides: Dict[str, Any] = None,
+        ):
+            # 初始化 Accelerator
+            self.accelerator = Accelerator(mixed_precision=mixed_precision if torch.cuda.is_available() else 'no')
+            self.device = self.accelerator.device
 
-        # --- 保存与 Runner 自身相关的配置 ---
-        self.model_id = model_id
-        self.dataset_path = dataset_path
-        self.output_dir_base = output_dir_base
-        self.per_device_batch_size = per_device_batch_size
-        self.dataloader_num_workers = dataloader_num_workers
-        self.hf_config_overrides = hf_config_overrides or {}
+            # --- 保存与 Runner 自身相关的配置 ---
+            self.model_id = model_id
+            self.dataset_path = dataset_path
+            self.output_dir_base = output_dir_base
+            self.per_device_batch_size = per_device_batch_size
+            self.dataloader_num_workers = dataloader_num_workers
+            self.hf_config_overrides = hf_config_overrides or {}
 
-        # --- 保存 BFSProver 的特定配置 ---
-        self.tactic_shots = tactic_shots or []
-        self.bfs_degree = bfs_degree
-        self.bfs_timeout = bfs_timeout
-        self.bfs_prover_num_workers = bfs_prover_num_workers
-        self.model_gen_max_tokens = max_new_tokens
-        self.model_gen_temperature = temperature
+            # --- 保存 BFSProver 的特定配置 ---
+            self.tactic_shots = tactic_shots or []
+            self.bfs_degree = bfs_degree
+            self.bfs_timeout = bfs_timeout
+            self.bfs_prover_num_workers = bfs_prover_num_workers
+            self.model_gen_max_tokens = max_new_tokens
+            self.model_gen_temperature = temperature
 
-        # --- 设置输出路径 (仅主进程创建) ---
-        model_short_name = self.model_id.split('/')[-1]
-        timestamp = strftime('%Y%m%d-%H%M%S')
-        self.output_dir = Path(self.output_dir_base) / f"{model_short_name}_{timestamp}"
-        self.proof_save_dir = self.output_dir / "proofs"
-        self.tmp_dir = self.output_dir / "tmp" # 为Prover提供临时目录
-        self.results_log_file = self.output_dir / "results.json"
+            # --- 设置输出路径 ---
+            model_short_name = self.model_id.split('/')[-1]
+            timestamp = strftime('%Y%m%d-%H%M%S')
+            self.output_dir = Path(self.output_dir_base) / f"{model_short_name}_{timestamp}"
+            self.proof_save_dir = self.output_dir / "proofs"
+            self.tmp_dir = self.output_dir / "tmp" # 为Prover提供临时目录
+            self.results_log_file = self.output_dir / "results.json"
 
-        if self.accelerator.is_main_process:
+            # <<< --- 核心修改：移除 if 条件，让所有进程都创建目录 --- >>>
+            # 即使多个进程同时尝试创建，`exist_ok=True` 也能保证不会出错。
             self.proof_save_dir.mkdir(parents=True, exist_ok=True)
             self.tmp_dir.mkdir(parents=True, exist_ok=True)
-            self.accelerator.print(f"BFS Search Runner initialized. Outputs will be saved to: {self.output_dir.resolve()}")
-            self.accelerator.print(f"Accelerator: num_processes={self.accelerator.num_processes}, device='{str(self.device)}', mixed_precision='{self.accelerator.mixed_precision}'")
+            
+            # 打印信息只在主进程执行，避免日志混乱
+            if self.accelerator.is_main_process:
+                self.accelerator.print(f"BFS Search Runner initialized. Outputs will be saved to: {self.output_dir.resolve()}")
+                self.accelerator.print(f"Accelerator: num_processes={self.accelerator.num_processes}, device='{str(self.device)}', mixed_precision='{self.accelerator.mixed_precision}'")
+            
+            # 可选：添加一个同步点，确保目录创建后再继续
+            self.accelerator.wait_for_everyone()
 
     def _setup_hf_config(self) -> HuggingFaceModelConfig:
         """配置 Hugging Face 模型"""
@@ -142,8 +149,9 @@ class LocalSearchRunner:
             if hf_model_wrapper.tokenizer.pad_token_id is None and hf_model_wrapper.tokenizer.eos_token_id is not None:
                 hf_model_wrapper.tokenizer.pad_token_id = hf_model_wrapper.tokenizer.eos_token_id
             
-            # --- 核心修改：初始化 BFSProver ---
-            prompt_builder = FewShotPromptBuilder(shots=self.tactic_shots)
+            # 初始化 BFSProver
+            # 使用 `FewShotPromptBuilder` 并传入空的 ahot 列表，因为它现在只被用于调用 `build_chat_for_tactic`
+            prompt_builder = FewShotPromptBuilder(shots=[])
             prover_tmp_dir = self.tmp_dir / f"process_{self.accelerator.process_index}"
             bfs_prover = BFSProver(
                 model=hf_model_wrapper,
@@ -153,7 +161,7 @@ class LocalSearchRunner:
                 degree=self.bfs_degree
             )
 
-            # --- 核心修改：执行证明搜索循环 ---
+            # 执行证明搜索循环
             current_process_outputs = []
             progress_bar = tqdm(
                 prepared_dataloader, 
@@ -163,48 +171,54 @@ class LocalSearchRunner:
             
             for batch_items in progress_bar:
                 for item in batch_items:
-                    # 构造初始目标
-                    goal_to_prove = f"{item.prompt_ready_stmt}\n"
-                    
+                    goal_to_prove = f"{item.prompt_ready_stmt}"
+                    if "by" not in goal_to_prove.lower():
+                        goal_to_prove = goal_to_prove.strip() + " := by\n"
+
                     self.accelerator.print(f"[Proc {self.accelerator.process_index}] 开始搜索证明: {item.id}")
                     search_start_time = time()
 
-                    # 调用 BFSProver 进行搜索
-                    root, final_proof_code = bfs_prover.thread_prove(
+                    # 直接调用 prover，它会返回一个包含所有需要信息的字典
+                    search_result = bfs_prover.thread_prove(
                         goal_to_prove, 
                         num_workers=self.bfs_prover_num_workers
                     )
 
                     search_duration = time() - search_start_time
-                    is_proved = root is not None
-
+                    is_proved = search_result['proved']
                     self.accelerator.print(f"[Proc {self.accelerator.process_index}] 完成搜索: {item.id}, 证明成功: {is_proved}, 用时: {search_duration:.2f}s")
                     
-                    # 保存当前进程的输出结果
+                    # 将完整的结果添加到待聚合列表中
                     current_process_outputs.append({
                         "id": item.id,
                         "statement": item.statement,
-                        "proved": is_proved,
-                        "proof_code": final_proof_code,
                         "search_time": search_duration,
                         "process_index": self.accelerator.process_index,
+                        **search_result  # 合并prover返回的所有字段
                     })
 
-                    # 保存证明文件，无论成功与否
+                    # 保存证明文件
                     safe_id = item.id.replace('/', '_').replace('\\', '_')
                     status_tag = 'ok' if is_proved else 'fail'
                     proof_file = self.proof_save_dir / f"{safe_id}_{status_tag}.lean"
                     with proof_file.open("w", encoding="utf-8") as f:
-                        f.write(final_proof_code or (goal_to_prove + "  -- Proof Search Failed --"))
+                        code_to_save = search_result.get('final_proof_code')
+                        # 如果证明失败但有最深路径，则保存最深路径的代码
+                        if not code_to_save and not is_proved and search_result.get('tactic_path'):
+                             code_to_save = search_result['tactic_path'][-1].get('code_after_tactic', goal_to_prove + "  -- Deepest path failed --")
+                        else:
+                             code_to_save = code_to_save or (goal_to_prove + "  -- Proof Search Failed --")
+                        f.write(code_to_save)
 
             # --- 循环结束，等待所有进程 ---
             self.accelerator.wait_for_everyone()
 
-            # --- 结果聚合 (与您提供的代码逻辑保持一致) ---
+            # --- 结果聚合与保存 ---
             gathered_outputs_list = gather_object(current_process_outputs)
 
             if self.accelerator.is_main_process:
                 self.accelerator.print("\n--- 所有搜索完成，开始聚合结果 ---")
+                # `gather_object` 可能会返回一个列表的列表，需要展平
                 final_results = [item for item in gathered_outputs_list ]
                 self.accelerator.print(f"从所有进程共收集到 {len(final_results)} 条结果。")
 
