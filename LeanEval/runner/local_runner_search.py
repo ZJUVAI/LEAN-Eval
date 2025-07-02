@@ -220,9 +220,28 @@ class LocalSearchRunner:
                 # `gather_object` 可能会返回一个列表的列表，需要展平
                 final_results = [item for item in gathered_outputs_list ]
                 self.accelerator.print(f"从所有进程共收集到 {len(final_results)} 条结果。")
+                total_attempts = len(final_results)
+                proved_count = sum(1 for result in final_results if result.get('proved'))
+                success_rate = (proved_count / total_attempts) * 100 if total_attempts > 0 else 0
+                
+                summary = {
+                    "total_theorems": total_attempts,
+                    "proved_theorems": proved_count,
+                    "success_rate_percent": round(success_rate, 2)
+                }
+                
+                self.accelerator.print("\n--- 证明完成统计 ---")
+                self.accelerator.print(f"  - 总计尝试定理数: {summary['total_theorems']}")
+                self.accelerator.print(f"  - 成功证明定理数: {summary['proved_theorems']}")
+                self.accelerator.print(f"  - 成功率: {summary['success_rate_percent']}%")
+                self.accelerator.print("---------------------\n")
+                final_log_data = {
+                    "summary": summary,
+                    "results": final_results
+                }
 
                 with self.results_log_file.open("w", encoding="utf-8") as f:
-                    json.dump(final_results, f, indent=2, ensure_ascii=False)
+                    json.dump(final_log_data, f, indent=2, ensure_ascii=False)
                 
                 self.accelerator.print(f"最终结果已保存至: {self.results_log_file.resolve()}")
                 self.accelerator.print(f"\n整体运行结束. 总用时: {time() - overall_start_time:.2f}s")

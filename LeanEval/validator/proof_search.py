@@ -35,7 +35,7 @@ class BFSProver:
     def run_node(self, node: Node, tmp_file: Path) -> Tuple[List[str], List[str]]:
         tmp_file.write_text(node.leanCode, encoding="utf-8")
         success, msg = self.proofValidator.validate_file(tmp_file)
-        print(f"\nvalidation message: {msg}\n")
+        # print(f"\nvalidation message: {msg}\n")
         tips, error = handle_lean_str(msg)
         if msg == "Lean验证超时":
             node.status = Status.Error
@@ -131,10 +131,10 @@ class BFSProver:
             if node.status == Status.Open:
                 chat_prompt = self.prompt_builder.build_chat_for_tactic(node.leanCode, tips,error)
                 p = json.dumps(chat_prompt, ensure_ascii=False, indent=2)
-                print(f"\nChat prompt for node {node.id}:\n{p}\n")
+                # print(f"\nChat prompt for node {node.id}:\n{p}\n")
                 # *** 这里的调用现在是安全的，因为是单线程执行 ***
                 model_response = self.model.predict(chat_prompt)
-                print(f"\nModel response for node {node.id}:\n{model_response}\n")
+                # print(f"\nModel response for node {node.id}:\n{model_response}\n")
                 tactics = self._parse_prioritized_tactics(model_response)
                 tactics_to_use = tactics[:self.degree]
 
